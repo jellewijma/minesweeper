@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Minesweeper Game</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          gridTemplateColumns: {
+            // Simple 16 column grid
+            '16': 'repeat(16, minmax(0, 1fr))',
+            '30': 'repeat(30, minmax(0, 1fr))',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+
+<body class="bg-gray-900 text-white">
+  <div class="container mx-auto">
+    <h1 class="text-center text-4xl my-8">Minesweeper</h1>
+    <div id="board" class="mx-auto grid grid-cols-9 gap-2 bg-gray-700 rounded-xl"></div>
+    <div class="w-full py-4">
+      <button id="reset-btn" class="flex mx-auto py-2 px-4 bg-gray-800 text-white font-bold rounded">Reset</button>
+    </div>
+    <div class="flex justify-center mt-5">
+      <div class="inline-flex">
+        <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-l hover:bg-gray-300"
+          onclick="setDifficulty('beginner')">Beginner</button>
+        <button class="px-4 py-2 bg-gray-200 text-gray-700 hover:bg-gray-300"
+          onclick="setDifficulty('intermediate')">Intermediate</button>
+        <button class="px-4 py-2 bg-gray-200 text-gray-700 rounded-r hover:bg-gray-300"
+          onclick="setDifficulty('expert')">Expert</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal HTML -->
+  <div id="myModal" class="fixed z-10 inset-0 overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen">
+      <div class="modal-overlay fixed inset-0 bg-gray-500 opacity-75 z-20"></div>
+      <div class="modal-content bg-white w-1/2 rounded-lg p-6 z-30">
+        <!-- <span class="close absolute top-0 right-0 text-3xl">&times;</span> -->
+        <h2 class="text-2xl font-bold mb-2 text-black">Game Over!</h2>
+        <p class="text-lg mb-4 text-black">You hit a bomb!</p>
+        <p class="text-lg mb-2 text-black">Choose your next game difficulty:</p>
+        <div class="flex justify-center space-x-4">
+          <button id="easy" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg">Easy</button>
+          <button id="medium" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg">Medium</button>
+          <button id="hard" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg">Hard</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+  <script>
+    // Define variables
+    const board = document.getElementById("board");
+    let gameover = false;
+    let minesCleared = 0;
+    let rows, cols, mines;
+    const resetBtn = document.querySelector("#reset-btn");
+    resetBtn.addEventListener("click", resetGame);
+
+    // Show the modal
+    let modal = document.getElementById("myModal");
+    let btnEasy = document.getElementById("easy");
+    let btnMedium = document.getElementById("medium");
+    let btnHard = document.getElementById("hard");
+
+
+    // When the user clicks on the button, start a new game with the chosen difficulty
+    btnEasy.onclick = function () {
+      setDifficulty('beginner')
+      modal.style.display = "none";
+    };
+    btnMedium.onclick = function () {
+      setDifficulty('intermediate')
+      modal.style.display = "none";
+    };
+    btnHard.onclick = function () {
+      setDifficulty('expert')
+      modal.style.display = "none";
+    };
+
+    modal.style.display = "none";
+
+    setDifficulty("beginner");
+
+    function setDifficulty(difficulty) {
+      const boardContainer = document.getElementById("board");
+      if (difficulty === "beginner") {
+        rows = 9;
+        cols = 9;
+        mines = 10;
+        boardContainer.classList.remove("w-[444px]", "w-[888px]", "h-[444px]", "h-[888px]", "w-[1672px]");
+        boardContainer.classList.remove("grid-cols-16", "grid-cols-30", "grid-cols-9");
+        boardContainer.classList.add("w-[496px]", "h-[496px]");
+        boardContainer.classList.add("grid-cols-9");
+      } else if (difficulty === "intermediate") {
+        rows = 16;
+        cols = 16;
+        mines = 40;
+        boardContainer.classList.remove("w-[444px]", "w-[888px]", "h-[444px]", "h-[888px]", "w-[1672px]");
+        boardContainer.classList.remove("grid-cols-16", "grid-cols-30", "grid-cols-9");
+        boardContainer.classList.add("w-[888px]", "h-[888px]");
+        boardContainer.classList.add("grid-cols-16");
+      } else if (difficulty === "expert") {
+        rows = 16;
+        cols = 30;
+        mines = 99;
+        boardContainer.classList.remove("w-[444px]", "w-[888px]", "h-[444px]", "h-[888px]", "w-[1672px]");
+        boardContainer.classList.remove("grid-cols-16", "grid-cols-30", "grid-cols-9");
+        boardContainer.classList.add("h-[888px]", "w-[1672px]");
+        boardContainer.classList.add("grid-cols-30");
+      }
+      // Call a function to update the game board based on the new variables
+      updateBoard();
+    }
+
+    function updateBoard() {
+      // Clear board
+      board.innerHTML = "";
+      // Initialize board
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const cell = document.createElement("button");
+          cell.classList.add("bg-gray-800", "w-12", "h-12", "rounded-lg", "focus:outline-none");
+          cell.dataset.row = row;
+          cell.dataset.col = col;
+          cell.addEventListener("click", handleClick);
+          cell.addEventListener("contextmenu", handleRightClick);
+          board.appendChild(cell);
+        }
+      }
+      addMines();
+    }
+
+    function handleRightClick(event) {
+      event.preventDefault();
+      const cell = event.target;
+      if (!cell.disabled) {
+        cell.classList.toggle("bg-purple-700");
+        cell.textContent = cell.textContent === "🚩" ? "" : "🚩";
+      }
+    }
+
+    function addMines(params) {
+      // Add mines randomly
+      for (let i = 0; i < mines; i++) {
+        const row = Math.floor(Math.random() * rows);
+        const col = Math.floor(Math.random() * cols);
+        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+        cell.dataset.mine = true;
+        minesCleared++;
+      }
+    }
+
+
+    // Handle cell click
+    function handleClick(event) {
+      if (gameover) return;
+
+      const cell = event.target;
+      const row = parseInt(cell.dataset.row);
+      const col = parseInt(cell.dataset.col);
+
+      const count = countMines(row, col);
+      const flags = countFlags(row, col);
+
+      if (count === flags) {
+        revealEmpty(row, col);
+      } else {
+        if (cell.dataset.mine) {
+          cell.classList.add("bg-red-600");
+          revealMines();
+          gameover = true;
+          modal.style.display = "block";
+        } else {
+          const count = countMines(row, col);
+          cell.disabled = true;
+
+          if (count === 0) {
+            cell.classList.add("bg-green-500");
+            revealEmpty(row, col);
+          } else {
+            const colors = ["bg-yellow-300", "bg-orange-400", "bg-red-500"];
+            const colorIndex = Math.min(count - 1, colors.length - 1);
+            cell.classList.add(colors[colorIndex]);
+            cell.textContent = count;
+          }
+
+          checkWin();
+        }
+      }
+    }
+
+    // Count number of mines around a cell
+    function countMines(row, col) {
+      let count = 0;
+      for (let r = row - 1; r <= row + 1; r++) {
+        for (let c = col - 1; c <= col + 1; c++) {
+          if (r >= 0 && r < rows && c >= 0 && c < cols) {
+            const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            if (cell.dataset.mine) {
+              count++;
+            }
+          }
+        }
+      }
+      return count;
+    }
+
+    // Count number of flags around a cell
+    function countFlags(row, col) {
+      let count = 0;
+      for (let r = row - 1; r <= row + 1; r++) {
+        for (let c = col - 1; c <= col + 1; c++) {
+          if (r >= 0 && r < rows && c >= 0 && c < cols) {
+            const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            if (cell.textContent === "🚩") {
+              count++;
+            }
+          }
+        }
+      }
+      return count;
+    }
+
+    // Reveal all mines on the board
+    function revealMines() {
+      const cells = document.querySelectorAll("[data-mine]");
+      for (let i = 0; i < cells.length; i++) {
+        cells[i].classList.add("bg-red-600");
+        cells[i].textContent = "💣";
+        cells[i].disabled = true;
+      }
+    }
+
+    // Reveal all empty cells around a cell
+    function revealEmpty(row, col) {
+      for (let r = row - 1; r <= row + 1; r++) {
+        for (let c = col - 1; c <= col + 1; c++) {
+          if (r >= 0 && r < rows && c >= 0 && c < cols) {
+            const cell = document.querySelector(`[data-row="${r}"][data-col="${c}"]`);
+            if (!cell.dataset.mine && !cell.disabled) {
+              const count = countMines(r, c);
+              cell.disabled = true;
+
+              if (count === 0) {
+                cell.classList.add("bg-green-500");
+                revealEmpty(r, c);
+              } else {
+                const colors = ["bg-yellow-300", "bg-orange-400", "bg-red-500"];
+                const colorIndex = Math.min(count - 1, colors.length - 1);
+                cell.classList.add(colors[colorIndex]);
+                cell.textContent = count;
+              }
+            }
+          }
+        }
+      }
+    }
+
+
+    // Check if the player has won the game
+    function checkWin() {
+      const cells = document.querySelectorAll("button");
+      let count = 0;
+      for (let i = 0; i < cells.length; i++) {
+        if (cells[i].disabled || cells[i].dataset.mine) {
+          count++;
+        }
+      }
+      if (count === rows * cols) {
+        gameover = true;
+        alert("You win!");
+      }
+    }
+
+    function resetGame() {
+      location.reload();
+    }
+  </script>
+</body>
+
+</html>
